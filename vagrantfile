@@ -1,0 +1,107 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = "ubuntu/bionic64"
+  config.vm.provider "virtualbox" do |v|
+    v.customize ["modifyvm", :id, "--memory", 256]
+    v.customize ["modifyvm", :id, "--nicpromisc2", "allow-all"]
+  end
+
+  # DNS
+  config.vm.define :bind9 do |bind9_config|
+    bind9_config.vm.hostname = "bind9"
+    bind9_config.vm.network :private_network, ip: "192.168.2.15"
+    bind9_config.vm.network "forwarded_port", guest: 53, host: 5353
+    bind9_config.vm.provider :virtualbox do |vb|
+      vb.customize ['modifyvm', :id, '--nictrace2', 'on']
+      vb.customize ['modifyvm', :id, '--nictracefile2', 'bind9_trace2.pcap'] 
+    end 
+  end
+
+  # Client
+  config.vm.define :firefox do |firefox_config|
+    firefox_config.vm.hostname = 'firefox'
+    firefox_config.vm.network :private_network, ip: "192.168.2.16"
+    firefox_config.ssh.forward_agent = true
+    firefox_config.ssh.forward_x11 = true
+    firefox_config.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--nictrace2', 'on']
+        vb.customize ["modifyvm", :id, "--memory", 1024]
+        vb.customize ['modifyvm', :id, '--nictracefile2', 'firefox_trace2.pcap'] 
+      end  
+  end
+
+  ## Cache
+  # Cache1
+  config.vm.define :varnish1 do |varnish1_config|
+    varnish1_config.vm.hostname = "varnish1"
+    varnish1_config.vm.network :private_network, ip: "192.168.2.13"
+    varnish1_config.vm.network :forwarded_port, guest: 80, host: 8080
+    varnish1_config.vm.provider :virtualbox do |vb|
+      vb.customize ['modifyvm', :id, '--nictrace2', 'on']
+      vb.customize ['modifyvm', :id, '--nictracefile2', 'varnish1_trace2.pcap'] 
+    end  
+  end
+
+  # Cache2
+  config.vm.define :varnish2 do |varnish2_config|
+    varnish2_config.vm.hostname = "varnish2"
+    varnish2_config.vm.network :private_network, ip: "192.168.2.14"
+    varnish2_config.vm.network :forwarded_port, guest: 80, host: 8081
+    varnish2_config.vm.provider :virtualbox do |vb|
+      vb.customize ['modifyvm', :id, '--nictrace2', 'on']
+      vb.customize ['modifyvm', :id, '--nictracefile2', 'varnish2_trace2.pcap'] 
+    end  
+  end
+
+  ## Load balancer
+  # LB1
+  config.vm.define :haproxy1, primary: true do |haproxy1_config|
+    haproxy1_config.vm.hostname = 'haproxy1'  
+    haproxy1_config.vm.network :private_network, ip: "192.168.2.11"
+    haproxy1_config.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--nictrace2', 'on']
+        vb.customize ['modifyvm', :id, '--nictracefile2', 'haproxy1_trace2.pcap']
+    end
+  end
+
+    # LB2
+  config.vm.define :haproxy2, primary: true do |haproxy2_config|
+    haproxy2_config.vm.hostname = 'haproxy2'
+    haproxy2_config.vm.network :private_network, ip: "192.168.2.12"
+    haproxy2_config.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--nictrace2', 'on']
+        vb.customize ['modifyvm', :id, '--nictracefile2', 'haproxy2_trace2.pcap']
+    end
+  end
+
+  ## Web server
+  # Web1
+  config.vm.define :web1 do |web1_config|
+    web1_config.vm.hostname = 'web1'
+    web1_config.vm.network :private_network, ip: "192.168.2.9"
+    web1_config.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--nictrace2', 'on']
+        vb.customize ['modifyvm', :id, '--nictracefile2', 'web1_trace2.pcap']
+     web1_config.vm.provision :ansible do |ansible|
+        ansible.playbook = "servidoresweb.yml"
+	end 
+     end
+  end
+  
+  #Web2
+  config.vm.define :web2 do |web2_config|
+    web2_config.vm.hostname = 'web2'
+    web2_config.vm.network :private_network, ip: "192.168.2.10"
+    web2_config.vm.provider :virtualbox do |vb|
+        vb.customize ['modifyvm', :id, '--nictrace2', 'on']
+        vb.customize ['modifyvm', :id, '--nictracefile2', 'web2_trace2.pcap']
+    web2_config.vm.provision :ansible do |ansible|
+        ansible.playbook = "servidoresweb.yml"
+    end
+  end
+end
+end
