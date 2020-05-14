@@ -1,0 +1,9 @@
+# Playbook de los servidores web, instalamos Apache 2 y actualizamos el servidor
+---
+
+ - hosts: web1
+   become: yes
+   become_method: sudo
+   tasks:
+    - name: install apache2
+      apt: name=apache2 update_cache=yes state=latest
